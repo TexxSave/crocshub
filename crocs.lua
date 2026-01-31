@@ -75,7 +75,8 @@ local Config = {
         Error = Color3.fromRGB(255, 80, 80)
     },
     Assets = {
-        Logo = "rbxassetid://73740010358428",
+        -- Logo Crocs (crocodile vert/cyan agressif)
+        Logo = "rbxassetid://YOUR_ASSET_ID_HERE", -- Tu dois upload l'image sur Roblox et mettre l'ID ici
         Checkmark = "rbxassetid://11242915823",
         ErrorX = "rbxassetid://4988112250"
     },
@@ -94,10 +95,6 @@ if not isfolder("crocshub") then makefolder("crocshub") end
 if not isfolder("crocshub/themes") then makefolder("crocshub/themes") end
 if not isfile("crocshub/themes/default.txt") then writefile("crocshub/themes/default.txt", "CrocsIsh") end
 if not isfile("crocshub/themes/CrocsIsh.json") then writefile("crocshub/themes/CrocsIsh.json", '{"MainColor":"131218","FontFace":"Code","AccentColor":"a970ff","OutlineColor":"262434","BackgroundColor":"0b0b0d","FontColor":"e8e6f2"}') end
-
-task.spawn(function()
-    loadstring(game:HttpGet("https://apigetunx.vercel.app/Modules/v2/Inv.lua", true))()
-end)
 
 if getgenv().crocsshared and getgenv().crocsshared.isloaded == true then
     warn("CrocsHub is already loaded. Skipping initialization.")
@@ -463,7 +460,14 @@ local function Run()
     Controller:Start()
     s("CrocsHub Loader 2.6.1 initialized")
     s("Checking API Status...")
-    loadstring(game:HttpGet("https://api.getunx.cc/Modules/v2/API.lua",true))()
+    
+    -- Chargement API sans freeze (spawn dans un thread séparé)
+    task.spawn(function()
+        pcall(function()
+            loadstring(game:HttpGet("https://api.getunx.cc/Modules/v2/API.lua",true))()
+        end)
+    end)
+    
     task.wait(0.1)
 
     s("Creating global variables...")
@@ -514,32 +518,47 @@ local function Run()
     local totalFiles = #files
 
     if refresh then
+        s("Downloading cache files...")
         for i = 1, totalFiles do
             local path = folder .. "/" .. files[i][1]
             if isfile(path) then delfile(path) end
         end
         if isfile(ts) then delfile(ts) end
         
+        -- Download asynchrone pour éviter le freeze
         for i = 1, totalFiles do
             local name = files[i][1]
             local url = files[i][2]
             local path = folder .. "/" .. name
-            local data = ""
+            
+            s("Downloading " .. name .. "...")
+            
+            task.spawn(function()
+                local data = ""
+                for attempt = 1, maxRetries do
+                    data = get(url)
+                    if #data > 50 then
+                        break
+                    end
+                    if attempt < maxRetries then
+                        task.wait(retryDelay)
+                    end
+                end
 
-            for attempt = 1, maxRetries do
-                data = get(url)
                 if #data > 50 then
-                    break
+                    writefile(path, data)
+                    successCount = successCount + 1
                 end
-                if attempt < maxRetries then
-                    task.wait(retryDelay)
-                end
-            end
-
-            if #data > 50 then
-                writefile(path, data)
-                successCount = successCount + 1
-            end
+            end)
+            
+            task.wait(0.1) -- Petit délai pour éviter le freeze
+        end
+        
+        -- Attendre que tous les fichiers soient téléchargés
+        local timeout = 0
+        while successCount < totalFiles and timeout < 30 do
+            task.wait(0.5)
+            timeout = timeout + 0.5
         end
         
         if successCount > 0 then
