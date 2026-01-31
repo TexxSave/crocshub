@@ -642,7 +642,7 @@ local function Run()
         
         -- Chargement asynchrone du script universel
         be,bf=pcall(function()
-            local scriptUrl="https://api.getunx.cc/Games/Universal.lua"
+            local scriptUrl="https://raw.githubusercontent.com/TexxSave/crocshub/refs/heads/main/universal.lua"
             s("Downloading universal script...")
             
             -- Download dans un thread séparé
