@@ -594,11 +594,42 @@ local function Run()
         s("Game verified: "..getgenv().crocsshared.gamename)
         task.wait(0.05)
         s("Fetching game-specific script...")
-        task.wait(0.01)
+        task.wait(0.1)
+        
+        -- Chargement asynchrone du script pour éviter le freeze
         be,bf=pcall(function()
             local scriptUrl=bd[bc]
-            local src=game:HttpGet(scriptUrl)
-            local func,err=loadstring(src,scriptUrl)
+            s("Downloading script...")
+            
+            -- Download dans un thread séparé
+            local scriptContent = ""
+            local downloadSuccess = false
+            
+            task.spawn(function()
+                local success, result = pcall(function()
+                    return game:HttpGet(scriptUrl)
+                end)
+                if success and result then
+                    scriptContent = result
+                    downloadSuccess = true
+                end
+            end)
+            
+            -- Attendre le téléchargement (max 10 secondes)
+            local waited = 0
+            while not downloadSuccess and waited < 10 do
+                task.wait(0.1)
+                waited = waited + 0.1
+            end
+            
+            if not downloadSuccess or scriptContent == "" then
+                error("Failed to download script")
+            end
+            
+            s("Loading script...")
+            task.wait(0.1)
+            
+            local func,err=loadstring(scriptContent,scriptUrl)
             if not func then error(err) end
             func()
         end)
@@ -608,10 +639,41 @@ local function Run()
         task.wait(0.03)
         s("Fetching universal script...")
         task.wait(0.1)
+        
+        -- Chargement asynchrone du script universel
         be,bf=pcall(function()
             local scriptUrl="https://api.getunx.cc/Games/Universal.lua"
-            local src=game:HttpGet(scriptUrl)
-            local func,err=loadstring(src,scriptUrl)
+            s("Downloading universal script...")
+            
+            -- Download dans un thread séparé
+            local scriptContent = ""
+            local downloadSuccess = false
+            
+            task.spawn(function()
+                local success, result = pcall(function()
+                    return game:HttpGet(scriptUrl)
+                end)
+                if success and result then
+                    scriptContent = result
+                    downloadSuccess = true
+                end
+            end)
+            
+            -- Attendre le téléchargement (max 10 secondes)
+            local waited = 0
+            while not downloadSuccess and waited < 10 do
+                task.wait(0.1)
+                waited = waited + 0.1
+            end
+            
+            if not downloadSuccess or scriptContent == "" then
+                error("Failed to download universal script")
+            end
+            
+            s("Loading universal script...")
+            task.wait(0.1)
+            
+            local func,err=loadstring(scriptContent,scriptUrl)
             if not func then error(err) end
             func()
         end)
